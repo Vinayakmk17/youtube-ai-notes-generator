@@ -61,3 +61,89 @@ Summarise the 3-5 most important things a student should remember.
 Transcript:
 {transcript}
 """
+
+
+def get_quiz_prompt(transcript: str) -> str:
+    """
+    Returns the prompt for generating a 10-question multiple-choice quiz.
+    """
+    return f"""You are an expert AI learning assistant. Generate a 10-question multiple-choice quiz based on the following transcript.
+You MUST output raw JSON format with the following structure:
+[
+  {{
+    "question": "Question text here?",
+    "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+    "answer": "A) Option 1",
+    "explanation": "Short explanation here."
+  }}
+]
+
+Transcript:
+{transcript}
+"""
+
+
+def get_flashcards_prompt(transcript: str) -> str:
+    """
+    Returns the prompt for generating 15 flashcards.
+    """
+    return f"""You are an expert AI learning assistant. Generate 15 flashcards based on the following transcript.
+You MUST output raw JSON format with the following structure:
+[
+  {{
+    "question": "Question text here",
+    "answer": "Answer text here"
+  }}
+]
+
+Transcript:
+{transcript}
+"""
+
+
+def get_interview_prompt(transcript: str) -> str:
+    """
+    Returns the prompt for generating 15 interview questions (5 Beginner, 5 Intermediate, 5 Advanced).
+    """
+    return f"""You are an expert AI learning assistant. Generate 15 interview questions based on the following transcript.
+Include 5 Beginner, 5 Intermediate, and 5 Advanced questions.
+You MUST output raw JSON format with the following structure:
+{{
+  "Beginner": [
+    {{ "question": "Question text?", "answer": "Suggested answer." }}
+  ],
+  "Intermediate": [
+    {{ "question": "Question text?", "answer": "Suggested answer." }}
+  ],
+  "Advanced": [
+    {{ "question": "Question text?", "answer": "Suggested answer." }}
+  ]
+}}
+
+Transcript:
+{transcript}
+"""
+
+
+def get_practice_prompt(transcript: str) -> str:
+    """
+    Returns the prompt for generating Practice questions (Easy, Medium, Hard).
+    """
+    return f"""You are an expert AI learning assistant. Generate practice questions based on the following transcript.
+Include Easy, Medium, and Hard practice questions.
+You MUST output raw JSON format with the following structure:
+{{
+  "Easy": [
+    {{ "question": "Question text?", "solution": "Step-by-step solution." }}
+  ],
+  "Medium": [
+    {{ "question": "Question text?", "solution": "Step-by-step solution." }}
+  ],
+  "Hard": [
+    {{ "question": "Question text?", "solution": "Step-by-step solution." }}
+  ]
+}}
+
+Transcript:
+{transcript}
+"""
