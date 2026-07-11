@@ -3,7 +3,8 @@ utils/gemini.py
 ----------------
 Gemini API wrapper using the modern google-genai SDK.
 Centralises model configuration and provides helper functions
-for text generation and (later) structured JSON generation.
+for text generation and structured JSON generation.
+Supports dynamic model selection from app settings.
 """
 
 import os
@@ -27,29 +28,65 @@ if not _API_KEY:
 
 _client = genai.Client(api_key=_API_KEY)
 
-# Primary and fallback models
-_PRIMARY_MODEL = "gemini-2.5-flash"
+# Primary and fallback models (overridable via get_model_from_settings)
+_PRIMARY_MODEL  = "gemini-2.5-flash"
 _FALLBACK_MODEL = "gemini-2.0-flash"
 
-_MAX_RETRIES = 3
+_MAX_RETRIES          = 3
 _INITIAL_BACKOFF_SECS = 5
+
+
+# ---------------------------------------------------------------------------
+# Dynamic model resolution
+# ---------------------------------------------------------------------------
+
+def _resolve_models() -> list[str]:
+    """
+    Returns an ordered list of models to try.
+    Reads from app settings if available; falls back to defaults.
+    """
+    try:
+        from utils.db import get_setting
+        primary = get_setting("ai_model", _PRIMARY_MODEL)
+    except Exception:
+        primary = _PRIMARY_MODEL
+
+    models = [primary]
+    # Add fallback only if it's different from primary
+    if _FALLBACK_MODEL != primary:
+        models.append(_FALLBACK_MODEL)
+    return models
+
+
+def _resolve_temperature() -> float:
+    """Reads temperature from settings."""
+    try:
+        from utils.db import get_setting
+        return float(get_setting("temperature", "1.0"))
+    except Exception:
+        return 1.0
 
 
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
 
-def generate_text(prompt: str) -> dict:
+def generate_text(prompt: str, temperature: float | None = None) -> dict:
     """
     Sends a text prompt to Gemini and returns the result.
     Includes retry with exponential backoff for rate-limit (429) errors,
     and falls back to a secondary model if the primary model quota is exhausted.
 
+    Args:
+        prompt:      The text prompt.
+        temperature: Override temperature (default: reads from settings).
+
     Returns a dict with:
         - text (str | None):  The generated content.
         - error (str | None): An error message, or None on success.
     """
-    models_to_try = [_PRIMARY_MODEL, _FALLBACK_MODEL]
+    models_to_try = _resolve_models()
+    temp = temperature if temperature is not None else _resolve_temperature()
 
     for model_id in models_to_try:
         for attempt in range(_MAX_RETRIES):
@@ -57,6 +94,9 @@ def generate_text(prompt: str) -> dict:
                 response = _client.models.generate_content(
                     model=model_id,
                     contents=prompt,
+                    config=genai.types.GenerateContentConfig(
+                        temperature=temp,
+                    ),
                 )
                 return {"text": response.text, "error": None}
             except Exception as exc:
@@ -81,6 +121,7 @@ def generate_text(prompt: str) -> dict:
         ),
     }
 
+
 def generate_json(prompt: str) -> dict:
     """
     Sends a text prompt to Gemini and requests JSON output format.
@@ -88,7 +129,8 @@ def generate_json(prompt: str) -> dict:
         - data (str | None):  The generated JSON string.
         - error (str | None): An error message, or None on success.
     """
-    models_to_try = [_PRIMARY_MODEL, _FALLBACK_MODEL]
+    models_to_try = _resolve_models()
+    temp = _resolve_temperature()
 
     for model_id in models_to_try:
         for attempt in range(_MAX_RETRIES):
@@ -98,6 +140,7 @@ def generate_json(prompt: str) -> dict:
                     contents=prompt,
                     config=genai.types.GenerateContentConfig(
                         response_mime_type="application/json",
+                        temperature=temp,
                     ),
                 )
                 return {"data": response.text, "error": None}
