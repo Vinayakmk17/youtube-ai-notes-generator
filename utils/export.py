@@ -21,21 +21,22 @@ def export_pdf(title: str, data: any, format_type: str) -> bytes:
     
     pdf.set_font("Helvetica", size=11)
     
+    import textwrap
+    import re
     # Helper to clean text
     def safe_text(txt):
         if not txt:
             return ""
-        s = str(txt).replace("—", "-").replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"').encode('latin-1', 'replace').decode('latin-1')
-        # Break up extremely long words (like URLs or markdown dividers) to max 40 chars
-        # 40 chars guarantees it fits in the page width even at font size 16.
-        words = s.split(' ')
-        chunked = []
-        for w in words:
-            if len(w) > 40:
-                chunked.append(' '.join(w[i:i+40] for i in range(0, len(w), 40)))
-            else:
-                chunked.append(w)
-        return ' '.join(chunked)
+        # Remove markdown bold/italic asterisks
+        s = re.sub(r'[*_]', '', str(txt))
+        # Replace common unicode chars
+        s = s.replace("\t", "    ").replace("—", "-").replace("‘", "'").replace("’", "'").replace("“", '"').replace("”", '"')
+        s = s.replace("\xa0", " ") # replace non-breaking spaces
+        s = s.encode('latin-1', 'replace').decode('latin-1')
+        
+        # Wrap at 90 characters to avoid FPDF width calculation issues
+        wrapped = textwrap.fill(s, width=90)
+        return wrapped
 
     if format_type == "notes":
         for line in data.split('\n'):

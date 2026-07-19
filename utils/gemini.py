@@ -121,6 +121,29 @@ def generate_text(prompt: str, temperature: float | None = None) -> dict:
         ),
     }
 
+def generate_text_stream(prompt: str):
+    """
+    Yields chunks of text from the Gemini model.
+    Yields a dict with {"text": chunk} on success.
+    Yields {"error": msg} on failure.
+    """
+    models_to_try = _resolve_models()
+    temp = _resolve_temperature()
+    
+    for model_id in models_to_try:
+        try:
+            response = _client.models.generate_content_stream(
+                model=model_id,
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(temperature=temp),
+            )
+            for chunk in response:
+                yield {"text": chunk.text, "error": None}
+            return
+        except Exception as exc:
+            pass
+            
+    yield {"text": None, "error": "Gemini API exhausted or failed."}
 
 def generate_json(prompt: str) -> dict:
     """

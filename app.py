@@ -512,18 +512,24 @@ if generate_clicked:
         length=length,
     )
 
-    with st.spinner("🤖 Generating AI-powered study notes…"):
-        ai_result = generate_text(prompt)
-
-    if ai_result["error"]:
-        st.error(f"🚫 {ai_result['error']}")
-        st.stop()
-
-    st.session_state.notes_text = ai_result["text"]
+    from utils.gemini import generate_text_stream
+    st.markdown("### 🤖 Generating AI-powered study notes…")
+    stream_box = st.empty()
+    full_text = ""
+    for chunk in generate_text_stream(prompt):
+        if chunk["error"]:
+            st.error(f"🚫 {chunk['error']}")
+            st.stop()
+        if chunk["text"]:
+            full_text += chunk["text"]
+            stream_box.markdown(full_text + "▌")
+            
+    stream_box.empty()
+    st.session_state.notes_text = full_text
     progress_bar.progress(80, text="💾 Saving session…")
 
     # 5 — Extract video title from notes (first line or video_id)
-    notes_lines = (ai_result["text"] or "").split("\n")
+    notes_lines = (full_text or "").split("\n")
     video_title = ""
     for line in notes_lines:
         stripped = line.strip().lstrip("#").strip()
@@ -543,7 +549,7 @@ if generate_clicked:
                 video_id=video_id,
                 video_title=video_title,
                 transcript_language=transcript_lang,
-                notes=ai_result["text"] or "",
+                notes=full_text or "",
                 quiz=[],
                 flashcards=[],
                 interview_questions={},
